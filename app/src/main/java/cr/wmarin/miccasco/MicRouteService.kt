@@ -28,7 +28,8 @@ import android.util.Log
  * notas de voz de WhatsApp, Asistente de Google, grabadoras, etc.
  *
  * Cómo lo logra:
- *  1. Pone el audio en MODE_IN_COMMUNICATION.
+ *  1. NO cambia el modo de audio (si se pone MODE_IN_COMMUNICATION,
+ *     WhatsApp cree que hay una llamada y bloquea las notas de voz).
  *  2. Android 12+: setCommunicationDevice(<headset SCO>).
  *     Android 8–11: startBluetoothSco().
  *     En ambos casos el sistema fuerza FOR_RECORD = BT_SCO, así que
@@ -155,7 +156,6 @@ class MicRouteService : Service() {
                 @Suppress("DEPRECATION")
                 am.isBluetoothScoOn = false
             }
-            if (am.mode == AudioManager.MODE_IN_COMMUNICATION) am.mode = AudioManager.MODE_NORMAL
         } catch (e: Exception) {
             Log.w(TAG, "Error al liberar ruta", e)
         }
@@ -176,9 +176,6 @@ class MicRouteService : Service() {
             ) {
                 setStatus("Llamada telefónica en curso (en pausa)")
                 return
-            }
-            if (mode != AudioManager.MODE_IN_COMMUNICATION) {
-                am.mode = AudioManager.MODE_IN_COMMUNICATION
             }
 
             if (Build.VERSION.SDK_INT >= 31) {
