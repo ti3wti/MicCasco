@@ -15,6 +15,7 @@ import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioRecordingConfiguration
 import android.media.AudioTrack
 import android.os.Build
 import android.os.Handler
@@ -36,6 +37,10 @@ import android.util.Log
  *     cualquier app que grabe con MIC / VOICE_RECOGNITION usa el casco.
  *  3. (Opcional) reproduce silencio por el canal de voz para que Android
  *     no reinicie el modo por inactividad (lo hace tras ~6 s sin audio).
+ *  MODO INTELIGENTE: el casco queda en A2DP (música estéreo) y solo se
+ *  cambia a HFP mientras alguna app está grabando (WhatsApp, Asistente…).
+ *  Android avisa con AudioRecordingCallback cuándo empieza y termina
+ *  cualquier grabación; 2,5 s después de terminar se vuelve a A2DP.
  *  4. Vigila cada 5 s y reaplica si otra app cambió la ruta. Durante una
  *     llamada telefónica normal no interviene.
  */
@@ -69,6 +74,52 @@ class MicRouteService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var silentTrack: AudioTrack? = null
     private var scoReceiverRegistered = false
+    private var smart = false
+    /** En modo inteligente: true mientras alguna app graba. */
+    private var engaged = false
+
+    private val recordingCallback = object : AudioManager.AudioRecordingCallback() {
+        override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>?) {
+            if (!smart || !running) return
+            if (!configs.isNullOrEmpty()) {
+                handler.removeCallbacks(releaseRunnable)
+                if (!engaged) {
+                    engaged = true
+                    applyRoute()
+                }
+            } else if (engaged) {
+                handler.removeCallbacks(releaseRunnable)
+                handler.postDelayed(releaseRunnable, 2500)
+            }
+        }
+    }
+
+    private val releaseRunnable = Runnable { releaseRoute() }
+
+    /** Devuelve el audio al modo música (A2DP). */
+    private fun releaseRoute() {
+        engaged = false
+        stopKeepAlive()
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                am.clearCommunicationDevice()
+            } else {
+                @Suppress("DEPRECATION")
+                am.stopBluetoothSco()
+                @Suppress("DEPRECATION")
+                am.isBluetoothScoOn = false
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "releaseRoute", e)
+        }
+        setStatus(idleText())
+    }
+
+    private fun idleText() =
+        "Modo inteligente: música en estéreo. El micrófono del casco se activa al grabar."
+
+    /** ¿Debe estar el micrófono del casco activo en este momento? */
+    private fun shouldRoute() = running && (!smart || engaged)
 
     private val deviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
@@ -83,7 +134,7 @@ class MicRouteService : Service() {
     private val watchdog = object : Runnable {
         override fun run() {
             if (!running) return
-            applyRoute()
+            if (shouldRoute()) applyRoute()
             handler.postDelayed(this, 5000)
         }
     }
@@ -97,6 +148,7 @@ class MicRouteService : Service() {
                     startKeepAlive()
                 }
                 AudioManager.SCO_AUDIO_STATE_DISCONNECTED -> {
+                    if (!shouldRoute()) return
                     setStatus("Esperando headset Bluetooth…")
                     handler.postDelayed({ applyRoute() }, 2000)
                 }
@@ -124,14 +176,20 @@ class MicRouteService : Service() {
         }
         if (!running) {
             running = true
+            smart = prefs.smart
+            engaged = false
             am.registerAudioDeviceCallback(deviceCallback, handler)
+            if (smart) {
+                am.registerAudioRecordingCallback(recordingCallback, handler)
+                if (am.activeRecordingConfigurations.isNotEmpty()) engaged = true
+            }
             if (Build.VERSION.SDK_INT < 31 && !scoReceiverRegistered) {
                 @Suppress("UnspecifiedRegisterReceiverFlag")
                 registerReceiver(scoReceiver, IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED))
                 scoReceiverRegistered = true
             }
         }
-        applyRoute()
+        if (shouldRoute()) applyRoute() else setStatus(idleText())
         handler.removeCallbacks(watchdog)
         handler.postDelayed(watchdog, 5000)
         MicTileService.refresh(this)
@@ -142,6 +200,7 @@ class MicRouteService : Service() {
         running = false
         handler.removeCallbacksAndMessages(null)
         try { am.unregisterAudioDeviceCallback(deviceCallback) } catch (_: Exception) {}
+        try { am.unregisterAudioRecordingCallback(recordingCallback) } catch (_: Exception) {}
         if (scoReceiverRegistered) {
             try { unregisterReceiver(scoReceiver) } catch (_: Exception) {}
             scoReceiverRegistered = false
@@ -168,7 +227,7 @@ class MicRouteService : Service() {
     // ------------------------------------------------------------------
 
     private fun applyRoute() {
-        if (!running) return
+        if (!shouldRoute()) return
         try {
             val mode = am.mode
             if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_RINGTONE ||
@@ -224,7 +283,7 @@ class MicRouteService : Service() {
     // ---- canal silencioso para mantener vivo el enlace SCO -------------
 
     private fun startKeepAlive() {
-        if (!prefs.keepAlive || silentTrack != null) return
+        if (smart || !prefs.keepAlive || silentTrack != null) return
         try {
             val rate = 16000
             val frames = rate / 2 // 0,5 s en bucle

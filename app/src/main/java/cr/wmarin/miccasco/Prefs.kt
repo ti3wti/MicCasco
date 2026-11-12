@@ -20,6 +20,11 @@ class Prefs(ctx: Context) {
         get() = sp.getString("name", "") ?: ""
         set(v) = sp.edit().putString("name", v).apply()
 
+    /** Modo inteligente: HFP solo mientras alguna app graba; A2DP (estéreo) el resto del tiempo. */
+    var smart: Boolean
+        get() = sp.getBoolean("smart", false)
+        set(v) = sp.edit().putBoolean("smart", v).apply()
+
     /** Reproduce silencio en canal de voz para que Android no cierre el enlace SCO. */
     var keepAlive: Boolean
         get() = sp.getBoolean("keepAlive", true)

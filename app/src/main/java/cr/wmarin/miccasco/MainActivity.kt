@@ -27,6 +27,7 @@ import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
+import android.widget.Switch
 import android.widget.TextView
 import kotlin.math.max
 import kotlin.math.min
@@ -47,6 +48,8 @@ class MainActivity : Activity() {
     private lateinit var deviceGroup: RadioGroup
     private lateinit var autoCheck: CheckBox
     private lateinit var keepCheck: CheckBox
+    private lateinit var smartCheck: Switch
+    private lateinit var modeText: TextView
     private lateinit var batteryBtn: Button
     private val radioToAddr = HashMap<Int, Pair<String, String>>()
     private lateinit var updateText: TextView
@@ -138,9 +141,30 @@ class MainActivity : Activity() {
         }
         root.addView(autoCheck, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
+        root.addView(section("Modo de funcionamiento"))
+        smartCheck = Switch(this).apply {
+            text = "Cambio automático"
+            textSize = 16f
+            isChecked = prefs.smart
+            setOnCheckedChangeListener { _, c ->
+                prefs.smart = c
+                keepCheck.isEnabled = !c
+                updateModeText()
+                if (MicRouteService.running) {
+                    MicRouteService.stop(this@MainActivity)
+                    toggleBtn.postDelayed({ startRoute() }, 600)
+                }
+            }
+        }
+        root.addView(smartCheck, LinearLayout.LayoutParams(-1, -2))
+        modeText = TextView(this).apply { textSize = 13f; setPadding(0, dp(4), 0, dp(8)) }
+        root.addView(modeText)
+        updateModeText()
+
         keepCheck = CheckBox(this).apply {
             text = "Mantener el canal del casco abierto (recomendado)"
             isChecked = prefs.keepAlive
+            isEnabled = !prefs.smart
             setOnCheckedChangeListener { _, c -> prefs.keepAlive = c }
         }
         root.addView(keepCheck)
@@ -164,7 +188,8 @@ class MainActivity : Activity() {
         root.addView(TextView(this).apply {
             textSize = 13f
             text = """
-                • Mientras esté activo, todo el audio del casco pasa por el canal de voz (HFP): la música se escucha en mono y con menor calidad. Desactívelo cuando solo quiera escuchar música.
+                • Modo inteligente: la música va en estéreo (A2DP) y solo cuando una app empieza a grabar (WhatsApp, Asistente…) se cambia al canal de voz (HFP). El cambio tarda ≈1 s: espere un instante antes de hablar.
+                • Sin modo inteligente, todo el audio del casco pasa siempre por el canal de voz: la música se escucha en mono y con menor calidad.
                 • Agregue el botón "Mic Casco" a los Ajustes rápidos (desliza la barra hacia abajo › lápiz/editar) para activarlo sin abrir la app.
                 • Para el Asistente: actívelo con el botón del headset o el de la pantalla. La detección de "Ok Google" la hace un chip del teléfono, pero una vez abierto el Asistente, la orden se escucha por el casco.
                 • Si el headset está emparejado con la pantalla AOOCCI y no con el teléfono, elija la pantalla como headset preferido.
@@ -173,6 +198,13 @@ class MainActivity : Activity() {
         })
 
         setContentView(ScrollView(this).apply { addView(root) })
+    }
+
+    private fun updateModeText() {
+        modeText.text = if (smartCheck.isChecked)
+            "ENCENDIDO: música en estéreo; el micrófono del casco se activa solo mientras una app graba (WhatsApp, Asistente…). Espere ≈1 s antes de hablar."
+        else
+            "APAGADO (siempre activo): el micrófono del casco queda activo todo el tiempo; la música se escucha en mono. Es el modo más confiable."
     }
 
     private fun section(t: String) = TextView(this).apply {
