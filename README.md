@@ -1,23 +1,179 @@
-# Mic Casco
+# 🎙️ Mic Casco
 
-App Android (8.0 o superior) que obliga al teléfono a usar el micrófono Bluetooth del casco para toda la grabación: notas de voz de WhatsApp, Asistente de Google, grabadoras, etc.
+**[English](#english) · [Español](#español)**
 
-## Compilar el APK (sin instalar nada)
-1. Cree un repositorio en GitHub (puede ser privado) y suba el contenido de esta carpeta, incluida la carpeta oculta `.github`.
-2. Abra la pestaña **Actions**. La compilación "Compilar APK" arranca sola y tarda unos 3 minutos.
-3. Al terminar, abra la ejecución y descargue el artefacto **MicCasco-apk** (es un zip con `app-debug.apk`).
-4. Pase el APK al teléfono e instálelo. Tendrá que permitir "instalar apps desconocidas".
+---
 
-También puede abrir la carpeta en Android Studio y presionar Run.
+## English
 
-## Uso
-1. Abra la app y conceda los permisos de Bluetooth y notificaciones.
-2. Elija su headset (o la pantalla AOOCCI si el casco está emparejado con ella).
-3. Presione **ACTIVAR MICRÓFONO DEL CASCO**, o use el botón "Mic Casco" de los Ajustes rápidos.
-4. Pruebe con **Grabar 5 s y escuchar**: debe aparecer "CASCO / Bluetooth ✔".
-5. Recomendado: quite la optimización de batería y active el inicio automático al conectar el headset.
+**Mic Casco** is a small Android app (interface in Spanish) that forces the phone to use the **Bluetooth helmet headset microphone** for *all* audio capture, not just phone calls.
 
-## Limitaciones
-- Mientras está activa, la música va por el canal de voz (mono, menor calidad).
-- La palabra "Ok Google" la detecta el teléfono. Abra el Asistente con el botón del headset: después de eso la orden se escucha por el casco.
-- Algunos fabricantes (Xiaomi, Samsung, etc.) cierran apps en segundo plano. Quite la optimización de batería.
+Without it, many apps (WhatsApp voice notes, Google Assistant / Gemini, voice recorders) keep using the phone's built-in microphone even when a Bluetooth headset is connected. On a motorcycle, that means the app hears wind and engine noise instead of your voice.
+
+### ✅ Tested with
+
+| Item | Model |
+|---|---|
+| Phone | Xiaomi Redmi (HyperOS) |
+| Helmet intercom | EJEAS Q8 |
+| Motorcycle screen | AOOCCI (wireless Android Auto) |
+| Android version | Android 8.0 or later required |
+
+It should work with any Bluetooth headset that supports the hands-free profile (HFP), but it has only been tested with the devices listed above.
+
+### ✨ Features
+
+- Routes the microphone of every app to the Bluetooth headset.
+- **Quick Settings tile** ("Mic Casco") to turn it on and off without opening the app.
+- **Automatic mode**: turns on when your chosen headset connects and turns off when it disconnects.
+- **Microphone test**: records 5 seconds and plays them back, showing which microphone was used (helmet ✔ or phone ✘).
+- **Built-in updater**: checks GitHub for new versions and installs them over the current one.
+- Does not interfere with regular phone calls.
+
+### 📥 Installation
+
+1. On your phone, open the latest release:
+   **https://github.com/TI3WTI/MicCasco/releases/latest**
+2. Download **MicCasco.apk**.
+3. Open the file. Android will ask you to **allow installation from unknown sources** for your browser or file manager. Allow it.
+4. **Google Play Protect** may warn you or block the app, because it is not published on Google Play. Tap **More details → Install anyway**.
+   If that option does not appear: open **Play Store → profile picture → Play Protect → ⚙️**, temporarily turn off **Scan apps with Play Protect**, install the app, and turn it back on.
+5. Open **Mic Casco** and grant the requested permissions (Nearby devices / Bluetooth, Notifications, Microphone for the test).
+
+### 🏍️ How to use
+
+1. Connect your helmet headset to the phone.
+2. In **Headset preferido** (Preferred headset), select your intercom. If the intercom is paired with the motorcycle screen instead of the phone, select the screen.
+3. Tap **ACTIVAR MICRÓFONO DEL CASCO** (activate helmet microphone), or use the Quick Settings tile.
+4. Run **Grabar 5 s y escuchar** (record 5 s and listen). The result should say **"CASCO / Bluetooth ✔"**.
+5. Recommended:
+   - Enable **Activar solo al conectar este headset** (activate only when this headset connects) for hands-free operation.
+   - Tap **Quitar optimización de batería** (remove battery optimization) so the system does not close the app while riding.
+
+### 🔄 Updates
+
+Open the app and check the **Actualizaciones** (Updates) section. When a new version is available, tap **INSTALAR VERSIÓN N** (install version N). The first time, Android will ask you to allow Mic Casco to install apps.
+
+### ⚠️ Known limitations
+
+- While active, audio to the helmet uses the voice channel (HFP). **Music sounds mono and at lower quality.** Turn the app off when you only want to listen to music.
+- The **"Hey Google"** wake word is detected by a dedicated chip in the phone, so it still listens through the phone. Start the Assistant with the **headset button** or the **screen button**; after that, your command is heard through the helmet.
+- Some manufacturers (Xiaomi, Samsung, etc.) aggressively close background apps. Remove battery optimization for Mic Casco.
+- If WhatsApp shows *"You can't record voice messages during a call"*, open the app and uncheck **Mantener el canal del casco abierto** (keep the helmet channel open).
+
+### 🔐 Permissions used
+
+| Permission | Why |
+|---|---|
+| Nearby devices / Bluetooth | Detect and select the helmet headset |
+| Modify audio settings | Route the microphone to the headset |
+| Notifications / Foreground service | Keep the routing active while riding |
+| Microphone | Only for the 5-second test |
+| Internet | Only to check for updates on GitHub |
+| Install apps | Only to install updates you approve |
+
+The app **does not collect, store, or send any personal data**. Audio recorded during the test stays in memory and is discarded after playback.
+
+### 🛠️ Build from source
+
+The APK is built automatically by **GitHub Actions** on every push to `main`, and published under **Releases**.
+
+To build locally: open the project in **Android Studio** and press **Run**, or run:
+
+```bash
+gradle assembleDebug
+```
+
+### ⚖️ Disclaimer
+
+This software is provided **"as is"**, without warranty of any kind. **Use it at your own risk.**
+The author is not responsible for any damage, data loss, malfunction, missed calls, or any other consequence of using this app.
+**Never handle your phone while riding.** Use voice commands and headset controls only, and always follow local traffic laws.
+
+---
+
+## Español
+
+**Mic Casco** es una pequeña app para Android que obliga al teléfono a usar el **micrófono Bluetooth del casco** para *todo* lo que se graba, no solo para las llamadas.
+
+Sin ella, muchas apps (notas de voz de WhatsApp, Asistente de Google / Gemini, grabadoras) siguen usando el micrófono del teléfono aunque haya un headset Bluetooth conectado. En la moto, eso significa que la app escucha el viento y el motor en lugar de su voz.
+
+### ✅ Probado con
+
+| Elemento | Modelo |
+|---|---|
+| Teléfono | Xiaomi Redmi (HyperOS) |
+| Intercomunicador del casco | EJEAS Q8 |
+| Pantalla de la moto | AOOCCI (Android Auto inalámbrico) |
+| Versión de Android | Se requiere Android 8.0 o superior |
+
+Debería funcionar con cualquier headset Bluetooth que soporte el perfil manos libres (HFP), pero solo se ha probado con los dispositivos indicados.
+
+### ✨ Funciones
+
+- Dirige el micrófono de todas las apps al headset Bluetooth.
+- **Botón en Ajustes rápidos** ("Mic Casco") para encender y apagar sin abrir la app.
+- **Modo automático**: se enciende al conectar el headset elegido y se apaga al desconectarlo.
+- **Prueba de micrófono**: graba 5 segundos y los reproduce, indicando qué micrófono se usó (casco ✔ o teléfono ✘).
+- **Actualizador integrado**: revisa GitHub y, si hay una versión nueva, la instala sobre la actual.
+- No interfiere con las llamadas telefónicas normales.
+
+### 📥 Instalación
+
+1. En el teléfono, abra la última versión publicada:
+   **https://github.com/TI3WTI/MicCasco/releases/latest**
+2. Descargue **MicCasco.apk**.
+3. Abra el archivo. Android le pedirá **permitir la instalación de apps de fuentes desconocidas** para el navegador o el administrador de archivos. Permítalo.
+4. **Google Play Protect** puede advertir o bloquear la app, porque no está publicada en Google Play. Toque **Más detalles → Instalar de todos modos**.
+   Si esa opción no aparece: abra **Play Store → foto de perfil → Play Protect → ⚙️**, apague temporalmente **Analizar apps con Play Protect**, instale la app y vuelva a encenderlo.
+5. Abra **Mic Casco** y conceda los permisos que solicita (Dispositivos cercanos / Bluetooth, Notificaciones y Micrófono para la prueba).
+
+### 🏍️ Cómo se usa
+
+1. Conecte el headset del casco al teléfono.
+2. En **Headset preferido**, elija su intercomunicador. Si el intercomunicador está emparejado con la pantalla de la moto y no con el teléfono, elija la pantalla.
+3. Toque **ACTIVAR MICRÓFONO DEL CASCO**, o use el botón de Ajustes rápidos.
+4. Haga la prueba **Grabar 5 s y escuchar**. Debe aparecer **"CASCO / Bluetooth ✔"**.
+5. Recomendado:
+   - Marque **Activar solo al conectar este headset** para que funcione sin tocar nada.
+   - Toque **Quitar optimización de batería** para que el sistema no cierre la app mientras conduce.
+
+### 🔄 Actualizaciones
+
+Abra la app y revise la sección **Actualizaciones**. Cuando haya una versión nueva, toque **INSTALAR VERSIÓN N**. La primera vez, Android le pedirá permitir que Mic Casco instale apps.
+
+### ⚠️ Limitaciones conocidas
+
+- Mientras está activa, el audio del casco va por el canal de voz (HFP). **La música se escucha en mono y con menor calidad.** Desactívela cuando solo quiera escuchar música.
+- La palabra **"Ok Google"** la detecta un chip dedicado del teléfono, por lo que sigue escuchándose por el teléfono. Abra el Asistente con el **botón del headset** o el **botón de la pantalla**; a partir de ahí, la orden se escucha por el casco.
+- Algunos fabricantes (Xiaomi, Samsung, etc.) cierran apps en segundo plano. Quite la optimización de batería a Mic Casco.
+- Si WhatsApp muestra *"No se pueden grabar mensajes de voz durante una llamada"*, abra la app y desmarque **Mantener el canal del casco abierto**.
+
+### 🔐 Permisos que usa
+
+| Permiso | Para qué |
+|---|---|
+| Dispositivos cercanos / Bluetooth | Detectar y elegir el headset del casco |
+| Modificar ajustes de audio | Dirigir el micrófono al headset |
+| Notificaciones / Servicio en primer plano | Mantener la función activa mientras conduce |
+| Micrófono | Solo para la prueba de 5 segundos |
+| Internet | Solo para buscar actualizaciones en GitHub |
+| Instalar apps | Solo para instalar actualizaciones que usted apruebe |
+
+La app **no recopila, guarda ni envía datos personales**. El audio de la prueba queda en memoria y se descarta después de reproducirlo.
+
+### 🛠️ Compilar desde el código
+
+El APK se compila automáticamente con **GitHub Actions** en cada cambio a `main` y se publica en **Releases**.
+
+Para compilar en su PC: abra el proyecto en **Android Studio** y presione **Run**, o ejecute:
+
+```bash
+gradle assembleDebug
+```
+
+### ⚖️ Aviso legal
+
+Este software se entrega **"tal cual"**, sin garantía de ningún tipo. **Úselo bajo su propio riesgo.**
+El autor no se hace responsable de daños, pérdida de datos, fallos, llamadas perdidas ni de ninguna otra consecuencia derivada de su uso.
+**Nunca manipule el teléfono mientras conduce.** Use solo comandos de voz y los controles del headset, y respete siempre las leyes de tránsito.
