@@ -11,14 +11,29 @@ android {
         applicationId = "cr.wmarin.miccasco"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // GitHub Actions numera cada compilación; ese número es la versión.
+        val run = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
+        versionCode = run
+        versionName = "1.$run"
+    }
+
+    // Firma fija: permite instalar cada versión nueva encima de la anterior.
+    signingConfigs {
+        create("fija") {
+            storeFile = file("miccasco.keystore")
+            storePassword = "miccasco"
+            keyAlias = "miccasco"
+            keyPassword = "miccasco"
+        }
     }
 
     buildTypes {
-        release {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("fija")
+        }
+        getByName("release") {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("fija")
         }
     }
 

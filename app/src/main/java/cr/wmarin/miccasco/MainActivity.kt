@@ -49,6 +49,10 @@ class MainActivity : Activity() {
     private lateinit var keepCheck: CheckBox
     private lateinit var batteryBtn: Button
     private val radioToAddr = HashMap<Int, Pair<String, String>>()
+    private lateinit var updateText: TextView
+    private lateinit var updateBtn: Button
+    private var latest: Updater.Release? = null
+    private var checking = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +72,7 @@ class MainActivity : Activity() {
         MicRouteService.listener = { runOnUiThread { refresh() } }
         loadDevices()
         refresh()
+        checkUpdates()
     }
 
     override fun onPause() {
@@ -145,6 +150,15 @@ class MainActivity : Activity() {
             setOnClickListener { requestBatteryExemption() }
         }
         root.addView(batteryBtn, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+
+        root.addView(section("Actualizaciones"))
+        updateText = TextView(this).apply { textSize = 14f }
+        root.addView(updateText)
+        updateBtn = Button(this).apply {
+            text = "Buscar actualización"
+            setOnClickListener { onUpdateClick() }
+        }
+        root.addView(updateBtn)
 
         root.addView(section("Notas"))
         root.addView(TextView(this).apply {
@@ -249,6 +263,66 @@ class MainActivity : Activity() {
         } catch (_: Exception) {
             startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
         }
+    }
+
+    // ---------------- Actualizaciones ----------------
+
+    private fun checkUpdates() {
+        if (checking) return
+        checking = true
+        val installed = Updater.installedVersion(this)
+        updateText.text = "Versión instalada: $installed. Buscando…"
+        Thread {
+            val r = try { Updater.fetchLatest() } catch (_: Exception) { null }
+            runOnUiThread {
+                checking = false
+                latest = r
+                when {
+                    r == null -> {
+                        updateText.text = "Versión instalada: $installed. No se pudo consultar GitHub."
+                        updateBtn.text = "Buscar actualización"
+                    }
+                    r.version > installed -> {
+                        updateText.text = "¡Hay una versión nueva (${r.version})! Instalada: $installed."
+                        updateBtn.text = "INSTALAR VERSIÓN ${r.version}"
+                    }
+                    else -> {
+                        updateText.text = "Versión $installed: está al día."
+                        updateBtn.text = "Buscar actualización"
+                    }
+                }
+            }
+        }.start()
+    }
+
+    private fun onUpdateClick() {
+        val r = latest
+        if (r == null || r.version <= Updater.installedVersion(this)) {
+            checkUpdates()
+            return
+        }
+        if (!packageManager.canRequestPackageInstalls()) {
+            updateText.text = "Permita a Mic Casco instalar apps y vuelva a tocar el botón."
+            startActivity(
+                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))
+            )
+            return
+        }
+        updateBtn.isEnabled = false
+        Thread {
+            try {
+                Updater.downloadAndInstall(this, r.apkUrl) { p ->
+                    runOnUiThread { updateBtn.text = "Descargando… $p %" }
+                }
+                runOnUiThread { updateBtn.text = "Instalando…" }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    updateText.text = "Error al descargar: ${e.message}"
+                    updateBtn.text = "INSTALAR VERSIÓN ${r.version}"
+                }
+            }
+            runOnUiThread { updateBtn.isEnabled = true }
+        }.start()
     }
 
     /** Graba 5 s con la fuente MIC (la misma que usan las notas de voz) y lo reproduce. */
