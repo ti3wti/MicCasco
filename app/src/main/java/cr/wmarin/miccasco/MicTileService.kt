@@ -44,10 +44,11 @@ class MicTileService : TileService() {
     }
 
     private fun update() {
+        Lang.load(this)
         val t = qsTile ?: return
         t.state = if (MicRouteService.running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         if (Build.VERSION.SDK_INT >= 29) {
-            t.subtitle = if (MicRouteService.running) "Casco" else "Teléfono"
+            t.subtitle = if (MicRouteService.running) Lang.t("Casco", "Helmet") else Lang.t("Teléfono", "Phone")
         }
         t.updateTile()
     }

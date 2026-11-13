@@ -54,7 +54,7 @@ class MicRouteService : Service() {
 
         @Volatile var running = false
             private set
-        @Volatile var status = "Inactivo"
+        @Volatile var status = ""
             private set
 
         /** La interfaz se suscribe aquí para refrescarse. */
@@ -116,7 +116,7 @@ class MicRouteService : Service() {
     }
 
     private fun idleText() =
-        "Modo inteligente: música en estéreo. El micrófono del casco se activa al grabar."
+        Lang.t("Modo inteligente: música en estéreo. El micrófono del casco se activa al grabar.", "Automatic mode: music in stereo. The helmet microphone turns on when an app records.")
 
     /** ¿Debe estar el micrófono del casco activo en este momento? */
     private fun shouldRoute() = running && (!smart || engaged)
@@ -144,12 +144,12 @@ class MicRouteService : Service() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1)) {
                 AudioManager.SCO_AUDIO_STATE_CONNECTED -> {
-                    setStatus("Micrófono del casco ACTIVO")
+                    setStatus(Lang.t("Micrófono del casco ACTIVO", "Helmet microphone ACTIVE"))
                     startKeepAlive()
                 }
                 AudioManager.SCO_AUDIO_STATE_DISCONNECTED -> {
                     if (!shouldRoute()) return
-                    setStatus("Esperando headset Bluetooth…")
+                    setStatus(Lang.t("Esperando headset Bluetooth…", "Waiting for Bluetooth headset…"))
                     handler.postDelayed({ applyRoute() }, 2000)
                 }
             }
@@ -160,6 +160,7 @@ class MicRouteService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Lang.load(this)
         am = getSystemService(AUDIO_SERVICE) as AudioManager
         prefs = Prefs(this)
         createChannel()
@@ -170,7 +171,7 @@ class MicRouteService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        if (!goForeground("Activando…")) {
+        if (!goForeground(Lang.t("Activando…", "Starting…"))) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -218,7 +219,7 @@ class MicRouteService : Service() {
         } catch (e: Exception) {
             Log.w(TAG, "Error al liberar ruta", e)
         }
-        status = "Inactivo"
+        status = ""
         listener?.invoke()
         MicTileService.refresh(this)
         super.onDestroy()
@@ -233,7 +234,7 @@ class MicRouteService : Service() {
             if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_RINGTONE ||
                 (Build.VERSION.SDK_INT >= 30 && mode == AudioManager.MODE_CALL_SCREENING)
             ) {
-                setStatus("Llamada telefónica en curso (en pausa)")
+                setStatus(Lang.t("Llamada telefónica en curso (en pausa)", "Phone call in progress (paused)"))
                 return
             }
 
@@ -241,29 +242,29 @@ class MicRouteService : Service() {
                 val target = pickDevice(am.availableCommunicationDevices)
                 if (target == null) {
                     stopKeepAlive()
-                    setStatus("Esperando headset Bluetooth…")
+                    setStatus(Lang.t("Esperando headset Bluetooth…", "Waiting for Bluetooth headset…"))
                     return
                 }
                 val current = am.communicationDevice
                 if (current?.id != target.id) {
                     if (!am.setCommunicationDevice(target)) {
-                        setStatus("No se pudo seleccionar ${target.productName}")
+                        setStatus(Lang.t("No se pudo seleccionar ${target.productName}", "Could not select ${target.productName}"))
                         return
                     }
                 }
                 startKeepAlive()
-                setStatus("Micrófono del casco ACTIVO: ${target.productName}")
+                setStatus(Lang.t("Micrófono del casco ACTIVO: ${target.productName}", "Helmet microphone ACTIVE: ${target.productName}"))
             } else {
                 @Suppress("DEPRECATION")
                 if (!am.isBluetoothScoOn) {
                     am.startBluetoothSco()
                     am.isBluetoothScoOn = true
-                    setStatus("Conectando con el casco…")
+                    setStatus(Lang.t("Conectando con el casco…", "Connecting to the helmet…"))
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "applyRoute", e)
-            setStatus("Error: ${e.message}")
+            setStatus(Lang.t("Error: ${e.message}", "Error: ${e.message}"))
         }
     }
 
@@ -342,14 +343,14 @@ class MicRouteService : Service() {
             true
         } catch (e: Exception) {
             Log.e(TAG, "No se pudo iniciar en primer plano", e)
-            status = "Falta permiso de Bluetooth o notificaciones"
+            status = Lang.t("Falta permiso de Bluetooth o notificaciones", "Missing Bluetooth or notification permission")
             listener?.invoke()
             false
         }
     }
 
     private fun createChannel() {
-        val ch = NotificationChannel(CHANNEL_ID, "Micrófono del casco", NotificationManager.IMPORTANCE_LOW)
+        val ch = NotificationChannel(CHANNEL_ID, Lang.t("Micrófono del casco", "Helmet microphone"), NotificationManager.IMPORTANCE_LOW)
         ch.setShowBadge(false)
         getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
@@ -370,7 +371,7 @@ class MicRouteService : Service() {
             .setContentIntent(openApp)
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
-            .addAction(Notification.Action.Builder(null, "Desactivar", stop).build())
+            .addAction(Notification.Action.Builder(null, Lang.t("Desactivar", "Turn off"), stop).build())
             .build()
     }
 }

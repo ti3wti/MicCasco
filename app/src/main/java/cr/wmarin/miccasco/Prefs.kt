@@ -25,6 +25,11 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean("smart", false)
         set(v) = sp.edit().putBoolean("smart", v).apply()
 
+    /** Idioma de la interfaz: "es" (predeterminado) o "en". */
+    var lang: String
+        get() = sp.getString("lang", "es") ?: "es"
+        set(v) = sp.edit().putString("lang", v).apply()
+
     /** Reproduce silencio en canal de voz para que Android no cierre el enlace SCO. */
     var keepAlive: Boolean
         get() = sp.getBoolean("keepAlive", true)

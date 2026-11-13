@@ -10,6 +10,7 @@ import android.widget.Toast
 /** Recibe el resultado del instalador del sistema. */
 class InstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        Lang.load(context)
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 val confirm: Intent? = if (Build.VERSION.SDK_INT >= 33) {
@@ -22,10 +23,10 @@ class InstallReceiver : BroadcastReceiver() {
                 if (confirm != null) context.startActivity(confirm)
             }
             PackageInstaller.STATUS_SUCCESS ->
-                Toast.makeText(context, "Mic Casco actualizada", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, Lang.t("Mic Casco actualizada", "Mic Casco updated"), Toast.LENGTH_LONG).show()
             else -> {
-                val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "desconocido"
-                Toast.makeText(context, "No se pudo actualizar: $msg", Toast.LENGTH_LONG).show()
+                val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: Lang.t("desconocido", "unknown")
+                Toast.makeText(context, Lang.t("No se pudo actualizar: $msg", "Update failed: $msg"), Toast.LENGTH_LONG).show()
             }
         }
     }

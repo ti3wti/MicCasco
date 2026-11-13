@@ -60,6 +60,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
+        Lang.load(this)
         buildUi()
         askBasePermissions()
         handleIntent(intent)
@@ -92,6 +93,8 @@ class MainActivity : Activity() {
 
     // ---------------- Interfaz ----------------
 
+    private fun t(es: String, en: String) = Lang.t(es, en)
+
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     private fun buildUi() {
@@ -99,6 +102,28 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(20), dp(20), dp(32))
         }
+
+        val langGroup = RadioGroup(this).apply { orientation = RadioGroup.HORIZONTAL; gravity = Gravity.END }
+        val rbEs = RadioButton(this).apply { id = View.generateViewId(); text = "Español" }
+        val rbEn = RadioButton(this).apply { id = View.generateViewId(); text = "English" }
+        langGroup.addView(rbEs)
+        langGroup.addView(rbEn)
+        langGroup.check(if (Lang.english) rbEn.id else rbEs.id)
+        langGroup.setOnCheckedChangeListener { _, id ->
+            val code = if (id == rbEn.id) "en" else "es"
+            if (code == prefs.lang) return@setOnCheckedChangeListener
+            prefs.lang = code
+            Lang.load(this)
+            if (MicRouteService.running) {
+                val app = applicationContext
+                MicRouteService.stop(app)
+                android.os.Handler(mainLooper).postDelayed({
+                    try { MicRouteService.start(app) } catch (_: Exception) {}
+                }, 600)
+            }
+            recreate()
+        }
+        root.addView(langGroup, LinearLayout.LayoutParams(-1, -2))
 
         statusText = TextView(this).apply {
             textSize = 18f
@@ -115,16 +140,16 @@ class MainActivity : Activity() {
         }
         root.addView(toggleBtn, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
-        root.addView(section("Prueba del micrófono"))
+        root.addView(section(t("Prueba del micrófono", "Microphone test")))
         testBtn = Button(this).apply {
-            text = "Grabar 5 s y escuchar"
+            text = t("Grabar 5 s y escuchar", "Record 5 s and listen")
             setOnClickListener { runTest() }
         }
         root.addView(testBtn)
         testResult = TextView(this).apply { textSize = 14f; setPadding(0, dp(4), 0, 0) }
         root.addView(testResult)
 
-        root.addView(section("Headset preferido"))
+        root.addView(section(t("Headset preferido", "Preferred headset")))
         deviceGroup = RadioGroup(this)
         deviceGroup.setOnCheckedChangeListener { _, id ->
             val p = radioToAddr[id] ?: return@setOnCheckedChangeListener
@@ -135,15 +160,15 @@ class MainActivity : Activity() {
         root.addView(deviceGroup)
 
         autoCheck = CheckBox(this).apply {
-            text = "Activar solo al conectar este headset y desactivar al desconectarlo"
+            text = t("Activar solo al conectar este headset y desactivar al desconectarlo", "Turn on only when this headset connects and off when it disconnects")
             isChecked = prefs.auto
             setOnCheckedChangeListener { _, c -> prefs.auto = c }
         }
         root.addView(autoCheck, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
-        root.addView(section("Modo de funcionamiento"))
+        root.addView(section(t("Modo de funcionamiento", "Operating mode")))
         smartCheck = Switch(this).apply {
-            text = "Cambio automático"
+            text = t("Cambio automático", "Automatic switching")
             textSize = 16f
             isChecked = prefs.smart
             setOnCheckedChangeListener { _, c ->
@@ -162,7 +187,7 @@ class MainActivity : Activity() {
         updateModeText()
 
         keepCheck = CheckBox(this).apply {
-            text = "Mantener el canal del casco abierto (recomendado)"
+            text = t("Mantener el canal del casco abierto (recomendado)", "Keep the helmet channel open (recommended)")
             isChecked = prefs.keepAlive
             isEnabled = !prefs.smart
             setOnCheckedChangeListener { _, c -> prefs.keepAlive = c }
@@ -170,31 +195,41 @@ class MainActivity : Activity() {
         root.addView(keepCheck)
 
         batteryBtn = Button(this).apply {
-            text = "Quitar optimización de batería"
+            text = t("Quitar optimización de batería", "Remove battery optimization")
             setOnClickListener { requestBatteryExemption() }
         }
         root.addView(batteryBtn, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
-        root.addView(section("Actualizaciones"))
+        root.addView(section(t("Actualizaciones", "Updates")))
         updateText = TextView(this).apply { textSize = 14f }
         root.addView(updateText)
         updateBtn = Button(this).apply {
-            text = "Buscar actualización"
+            text = t("Buscar actualización", "Check for updates")
             setOnClickListener { onUpdateClick() }
         }
         root.addView(updateBtn)
 
-        root.addView(section("Notas"))
+        root.addView(section(t("Notas", "Notes")))
         root.addView(TextView(this).apply {
             textSize = 13f
-            text = """
-                • Modo inteligente: la música va en estéreo (A2DP) y solo cuando una app empieza a grabar (WhatsApp, Asistente…) se cambia al canal de voz (HFP). El cambio tarda ≈1 s: espere un instante antes de hablar.
-                • Sin modo inteligente, todo el audio del casco pasa siempre por el canal de voz: la música se escucha en mono y con menor calidad.
-                • Agregue el botón "Mic Casco" a los Ajustes rápidos (desliza la barra hacia abajo › lápiz/editar) para activarlo sin abrir la app.
+            text = t(
+                """
+                • Cambio automático: la música va en estéreo (A2DP) y solo cuando una app empieza a grabar (WhatsApp, Asistente…) se cambia al canal de voz (HFP). El cambio tarda ≈1 s: espere un instante antes de hablar.
+                • Siempre activo: todo el audio del casco pasa por el canal de voz; la música se escucha en mono y con menor calidad.
+                • Agregue el botón "Mic Casco" a los Ajustes rápidos (deslice la barra hacia abajo › lápiz/editar) para activarlo sin abrir la app.
                 • Para el Asistente: actívelo con el botón del headset o el de la pantalla. La detección de "Ok Google" la hace un chip del teléfono, pero una vez abierto el Asistente, la orden se escucha por el casco.
                 • Si el headset está emparejado con la pantalla AOOCCI y no con el teléfono, elija la pantalla como headset preferido.
                 • En las llamadas telefónicas normales la app no interviene.
-            """.trimIndent()
+                """.trimIndent(),
+                """
+                • Automatic switching: music plays in stereo (A2DP) and only when an app starts recording (WhatsApp, Assistant…) does it switch to the voice channel (HFP). The switch takes ≈1 s: wait a moment before speaking.
+                • Always on: all helmet audio uses the voice channel; music sounds mono and at lower quality.
+                • Add the "Mic Casco" tile to Quick Settings (swipe down › pencil/edit) to turn it on without opening the app.
+                • For the Assistant: start it with the headset or screen button. "Hey Google" is detected by a chip in the phone, but once the Assistant is open, your command is heard through the helmet.
+                • If the headset is paired with the AOOCCI screen instead of the phone, select the screen as preferred headset.
+                • The app does not interfere with regular phone calls.
+                """.trimIndent()
+            )
         })
 
         setContentView(ScrollView(this).apply { addView(root) })
@@ -202,9 +237,9 @@ class MainActivity : Activity() {
 
     private fun updateModeText() {
         modeText.text = if (smartCheck.isChecked)
-            "ENCENDIDO: música en estéreo; el micrófono del casco se activa solo mientras una app graba (WhatsApp, Asistente…). Espere ≈1 s antes de hablar."
+            t("ENCENDIDO: música en estéreo; el micrófono del casco se activa solo mientras una app graba (WhatsApp, Asistente…). Espere ≈1 s antes de hablar.", "ON: music in stereo; the helmet microphone turns on only while an app records (WhatsApp, Assistant…). Wait ≈1 s before speaking.")
         else
-            "APAGADO (siempre activo): el micrófono del casco queda activo todo el tiempo; la música se escucha en mono. Es el modo más confiable."
+            t("APAGADO (siempre activo): el micrófono del casco queda activo todo el tiempo; la música se escucha en mono. Es el modo más confiable.", "OFF (always on): the helmet microphone stays active all the time; music sounds mono. This is the most reliable mode.")
     }
 
     private fun section(t: String) = TextView(this).apply {
@@ -216,9 +251,9 @@ class MainActivity : Activity() {
 
     private fun refresh() {
         val on = MicRouteService.running
-        statusText.text = if (on) MicRouteService.status else "Inactivo: se usa el micrófono del teléfono"
+        statusText.text = if (on) MicRouteService.status else t("Inactivo: se usa el micrófono del teléfono", "Inactive: using the phone microphone")
         statusText.setBackgroundColor(if (on) Color.rgb(200, 240, 200) else Color.rgb(235, 235, 235))
-        toggleBtn.text = if (on) "DESACTIVAR" else "ACTIVAR MICRÓFONO DEL CASCO"
+        toggleBtn.text = if (on) t("DESACTIVAR", "TURN OFF") else t("ACTIVAR MICRÓFONO DEL CASCO", "ACTIVATE HELMET MICROPHONE")
         val pm = getSystemService(PowerManager::class.java)
         batteryBtn.visibility = if (pm.isIgnoringBatteryOptimizations(packageName)) View.GONE else View.VISIBLE
     }
@@ -228,7 +263,7 @@ class MainActivity : Activity() {
         deviceGroup.removeAllViews()
         radioToAddr.clear()
         val list = ArrayList<Pair<String, String>>()
-        list.add("" to "Cualquier headset Bluetooth")
+        list.add("" to t("Cualquier headset Bluetooth", "Any Bluetooth headset"))
         if (hasBtPermission()) {
             try {
                 val adapter = getSystemService(BluetoothManager::class.java).adapter
@@ -261,7 +296,7 @@ class MainActivity : Activity() {
         try {
             MicRouteService.start(this)
         } catch (e: Exception) {
-            statusText.text = "No se pudo iniciar: ${e.message}"
+            statusText.text = t("No se pudo iniciar: ${e.message}", "Could not start: ${e.message}")
         }
     }
 
@@ -303,7 +338,7 @@ class MainActivity : Activity() {
         if (checking) return
         checking = true
         val installed = Updater.installedVersion(this)
-        updateText.text = "Versión instalada: $installed. Buscando…"
+        updateText.text = t("Versión instalada: $installed. Buscando…", "Installed version: $installed. Checking…")
         Thread {
             val r = try { Updater.fetchLatest() } catch (_: Exception) { null }
             runOnUiThread {
@@ -311,16 +346,16 @@ class MainActivity : Activity() {
                 latest = r
                 when {
                     r == null -> {
-                        updateText.text = "Versión instalada: $installed. No se pudo consultar GitHub."
-                        updateBtn.text = "Buscar actualización"
+                        updateText.text = t("Versión instalada: $installed. No se pudo consultar GitHub.", "Installed version: $installed. Could not reach GitHub.")
+                        updateBtn.text = t("Buscar actualización", "Check for updates")
                     }
                     r.version > installed -> {
-                        updateText.text = "¡Hay una versión nueva (${r.version})! Instalada: $installed."
-                        updateBtn.text = "INSTALAR VERSIÓN ${r.version}"
+                        updateText.text = t("¡Hay una versión nueva (${r.version})! Instalada: $installed.", "New version available (${r.version})! Installed: $installed.")
+                        updateBtn.text = t("INSTALAR VERSIÓN ${r.version}", "INSTALL VERSION ${r.version}")
                     }
                     else -> {
-                        updateText.text = "Versión $installed: está al día."
-                        updateBtn.text = "Buscar actualización"
+                        updateText.text = t("Versión $installed: está al día.", "Version $installed: up to date.")
+                        updateBtn.text = t("Buscar actualización", "Check for updates")
                     }
                 }
             }
@@ -334,7 +369,7 @@ class MainActivity : Activity() {
             return
         }
         if (!packageManager.canRequestPackageInstalls()) {
-            updateText.text = "Permita a Mic Casco instalar apps y vuelva a tocar el botón."
+            updateText.text = t("Permita a Mic Casco instalar apps y vuelva a tocar el botón.", "Allow Mic Casco to install apps and tap the button again.")
             startActivity(
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))
             )
@@ -344,13 +379,13 @@ class MainActivity : Activity() {
         Thread {
             try {
                 Updater.downloadAndInstall(this, r.apkUrl) { p ->
-                    runOnUiThread { updateBtn.text = "Descargando… $p %" }
+                    runOnUiThread { updateBtn.text = t("Descargando… $p %", "Downloading… $p %") }
                 }
-                runOnUiThread { updateBtn.text = "Instalando…" }
+                runOnUiThread { updateBtn.text = t("Instalando…", "Installing…") }
             } catch (e: Exception) {
                 runOnUiThread {
-                    updateText.text = "Error al descargar: ${e.message}"
-                    updateBtn.text = "INSTALAR VERSIÓN ${r.version}"
+                    updateText.text = t("Error al descargar: ${e.message}", "Download error: ${e.message}")
+                    updateBtn.text = t("INSTALAR VERSIÓN ${r.version}", "INSTALL VERSION ${r.version}")
                 }
             }
             runOnUiThread { updateBtn.isEnabled = true }
@@ -365,13 +400,13 @@ class MainActivity : Activity() {
             return
         }
         testBtn.isEnabled = false
-        testBtn.text = "Grabando 5 s… hable ahora"
+        testBtn.text = t("Grabando 5 s… hable ahora", "Recording 5 s… speak now")
         testResult.text = ""
         Thread {
             val rate = 16000
             val total = rate * 5
             val data = ShortArray(total)
-            var source = "desconocido"
+            var source = t("desconocido", "unknown")
             try {
                 val minBuf = AudioRecord.getMinBufferSize(
                     rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
@@ -388,11 +423,11 @@ class MainActivity : Activity() {
                     if (off == 0) source = describe(rec.routedDevice)
                     off += n
                 }
-                if (source == "desconocido") source = describe(rec.routedDevice)
+                if (source == t("desconocido", "unknown")) source = describe(rec.routedDevice)
                 rec.stop()
                 rec.release()
 
-                runOnUiThread { testBtn.text = "Reproduciendo…" }
+                runOnUiThread { testBtn.text = t("Reproduciendo…", "Playing back…") }
                 val track = AudioTrack.Builder()
                     .setAudioAttributes(
                         AudioAttributes.Builder()
@@ -421,21 +456,21 @@ class MainActivity : Activity() {
             val result = source
             runOnUiThread {
                 testBtn.isEnabled = true
-                testBtn.text = "Grabar 5 s y escuchar"
-                testResult.text = "Se grabó desde: $result"
+                testBtn.text = t("Grabar 5 s y escuchar", "Record 5 s and listen")
+                testResult.text = t("Se grabó desde: $result", "Recorded from: $result")
             }
         }.start()
     }
 
     private fun describe(d: AudioDeviceInfo?): String {
-        if (d == null) return "desconocido"
+        if (d == null) return t("desconocido", "unknown")
         val kind = when (d.type) {
-            AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> "CASCO / Bluetooth ✔"
-            AudioDeviceInfo.TYPE_BUILTIN_MIC -> "micrófono del TELÉFONO ✘"
-            AudioDeviceInfo.TYPE_WIRED_HEADSET -> "audífono con cable"
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> t("CASCO / Bluetooth ✔", "HELMET / Bluetooth ✔")
+            AudioDeviceInfo.TYPE_BUILTIN_MIC -> t("micrófono del TELÉFONO ✘", "PHONE microphone ✘")
+            AudioDeviceInfo.TYPE_WIRED_HEADSET -> t("audífono con cable", "wired headset")
             AudioDeviceInfo.TYPE_USB_HEADSET, AudioDeviceInfo.TYPE_USB_DEVICE -> "USB"
             else -> if (Build.VERSION.SDK_INT >= 31 && d.type == AudioDeviceInfo.TYPE_BLE_HEADSET)
-                "CASCO / Bluetooth LE ✔" else "tipo ${d.type}"
+                t("CASCO / Bluetooth LE ✔", "HELMET / Bluetooth LE ✔") else t("tipo ${d.type}", "type ${d.type}")
         }
         return "$kind (${d.productName})"
     }
