@@ -2,6 +2,7 @@
 
 **[English](#english) · [Español](#español)**
 
+![Mic Casco](.github/banner.png)
 ---
 
 ## English
